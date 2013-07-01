@@ -3,13 +3,14 @@ context = {}
 # machine changeable values
 context['localuser'] = "xande"
 context['user'] = "xande"
-context['hosts'] = ["192.168.0.117"]
+context['sudouser'] = 'ubuntu'
+context['hosts'] = ["54.232.198.136"]
 context['github_username'] = "xvaldetaro"
 context['github_email'] = "xvaldetaro@gmail.com"
 context['github_key'] = "github"
 
 # project changeable values
-context['proj'] = "toto"
+context['proj'] = "caiubem"
 proj = context['proj']
 context['git_url'] = "git@github.com:xvaldetaro/%s.git" % proj
 context['domains'] = ["www.%s.com.br" % proj,"%s.com.br" % proj, "www.%s.com" % proj,"%s.com" % proj]
@@ -17,11 +18,12 @@ context['proxy_port'] = "8000"
 context['local_env_file'] = '/home/%s/confs/%s/prod.sh' % (context['localuser'], context['proj'])
 
 # DB access
-context['db_endpoint'] = 'localhost'
-context['db_root'] = 'root'
+context['db_endpoint'] = 'general.c0wd51cw67md.sa-east-1.rds.amazonaws.com'
+context['db_port'] = '3306'
+context['db_root'] = 'xvaldetaro'
 # This is NOT the root password (which you will type when prompted). 
 # This is the desired project user db password.
-context['db_password'] = '1235'
+context['db_password'] = 'd474b453'
 
 #uncomment to provide ssl:
 #context['ssl_port'] = "8443"

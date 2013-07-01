@@ -26,7 +26,7 @@ def system():
     """
     Executes all system commands in the correct order
     """
-    s_aws_ssh_auth()
+    #s_aws_ssh_auth()
     s_folders()
     s_aptpkgs()
     s_pypkgs()
@@ -40,13 +40,11 @@ def s_aws_ssh_auth():
     creates actual_userremotehome/.ssh folder and chowns it
     cats copied id_rsa to actual_userremotehome/.ssh/authorized_keys and chowns it
     """
-    local_ssh_pem = context['local_ssh_pem']
-    with settings(user="ubuntu",key_filename=local_ssh_pem):
-        _mkdir(r"{{ ssh_dir }}")
-        _put("{{ local_ssh_pub }}", "/home/ubuntu/temp.k" )
-        _sudo("cat /home/ubuntu/temp.k >> {{ ssh_dir }}/authorized_keys")
-        _sudo("chown {{ user }} {{ ssh_dir }}/authorized_keys")
-        _sudo("rm /home/ubuntu/temp.k")
+    _mkdir(r"{{ ssh_dir }}")
+    _put("{{ local_ssh_pub }}", "/home/{{user}}/temp.k" )
+    _sudo("cat /home/{{user}}/temp.k >> {{ ssh_dir }}/authorized_keys")
+    _sudo("chown {{ user }} {{ ssh_dir }}/authorized_keys")
+    _sudo("rm /home/{{user}}/temp.k")
 
 def s_folders():
     """
@@ -107,6 +105,9 @@ def project():
     p_nginx()
     p_gunicorn()
     p_repo()
+    p_venv()
+    p_scripts()
+    p_createdb_mysql()
     
 def p_folders():
     """
@@ -136,7 +137,10 @@ def p_repo():
         with settings(warn_only=True):
             _run("git clone {{ git_url }}")
     
+def p_venv():
     _run("virtualenv --distribute {{proj_venv_dir}}")
+
+def p_scripts():
     _put_template_('gunicorn_conf.py', context, '{{proj_conf_dir}}/gunicorn_conf.py')
     _put_template_('launch.sh', context, '{{proj_app_dir}}/launch.sh')
 
@@ -159,7 +163,7 @@ def p_createdb_mysql():
     f.close()
     _put(localtemplate, '{{home_dir}}/createdb_mysql')
     with settings(warn_only=True):
-        _run('mysql -u {{db_root}} -h {{db_endpoint}} -p mysql < {{home_dir}}/createdb_mysql')
+        _run('mysql -u {{db_root}} -h {{db_endpoint}} -P {{db_port}} -p mysql < {{home_dir}}/createdb_mysql')
         _run('rm {{home_dir}}/createdb_mysql')
     os.remove(localtemplate)
 
@@ -174,7 +178,7 @@ def p_dropdb_mysql():
     f.close()
     _put(localtemplate, '{{home_dir}}/dropdb_mysql')
     with settings(warn_only=True):
-        _run('mysql -u {{db_root}} -h {{db_endpoint}} -p mysql < {{home_dir}}/dropdb_mysql')
+        _run('mysql -u {{db_root}} -h {{db_endpoint}} -P {{db_port}} -p mysql < {{home_dir}}/dropdb_mysql')
         _run('rm {{home_dir}}/dropdb_mysql')
     os.remove(localtemplate)
 
@@ -185,7 +189,7 @@ def deploy():
     """
     d_putenv()
     d_pull()
-    #d_syncdb()
+    d_syncdb()
     d_restart()
 
 def d_pull():
@@ -210,7 +214,7 @@ def d_syncdb():
     """
     Executes django's syncdb
     """
-    with cd('{{proj_app_dir}}'):
+    with cd(context['proj_app_dir']):
         _fullenv_command('python manage.py syncdb')
 
 def d_restart():
@@ -220,6 +224,45 @@ def d_restart():
     with settings(warn_only=True):
         _sudo("initctl stop {{proj}}")
         _sudo("initctl start {{proj}}")
+
+
+# Log commands
+def l_e():
+    """
+    Prints error log
+    """
+    _run("cat {{proj_log_dir}}/error.log")
+
+def l_a():
+    """
+    Prints access log
+    """
+    _run("cat {{proj_log_dir}}/access.log")
+
+def l_ne():
+    """
+    Prints ningx error log
+    """
+    _run("cat {{proj_log_dir}}/nginx_error.txt")
+
+def l_na():
+    """
+    Prints nginx access log
+    """
+    _run("cat {{proj_log_dir}}/nginx_access.txt")
+
+# utils
+def u(command):
+    """
+    run command
+    """
+    _run(command)
+
+def us(command):
+    """
+    run command as sudo
+    """
+    _sudo(command)
 
 ### Internal commands
 def _mkdir(*dirs):
@@ -269,8 +312,10 @@ def _sudo(cmd_text):
     """
     Run command as root
     """
-    command = _render(cmd_text)
-    sudo(command)
+    local_ssh_pem = context['local_ssh_pem']
+    with settings(user="%s" % context['sudouser'],key_filename=local_ssh_pem):
+        command = _render(cmd_text)
+        sudo(command)
 
 def _render(template):
     """
@@ -293,3 +338,4 @@ def _virtualenv_command(command):
     Activates virtualenv and runs command
     """
     _run("source {{proj_venv_dir}}/bin/activate && %s" % command)
+    
