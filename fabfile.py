@@ -1,9 +1,13 @@
 from fabcontext import context
 from fabric.api import *
-from jinja2 import Template, Environment, PackageLoader
+from jinja2 import Template, Environment, FileSystemLoader
 from fabcontext import context
+import os
 
-jenv = Environment(loader=PackageLoader('fabhelper', 'templates'))
+# Capture our current directory
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+
+jenv = Environment(loader=FileSystemLoader(THIS_DIR+'/templates'))
 
 env.user = context['user']
 env.key_filename = context['local_ssh_priv']
@@ -138,12 +142,41 @@ def p_repo():
 
     _run('chmod 700 {{proj_app_dir}}/launch.sh')
 
-
 def p_gunicorn():
     """
     put gunicorn upstart conf
     """
     _put_template('upstart_process.conf', context, '/etc/init/{{ proj }}.conf')
+
+def p_createdb_mysql():
+    """
+    Create user (name of project) and database (also name of project) with proper priviledges;
+    """
+    tp = jenv.get_template("createdb_mysql")
+    localtemplate = '/home/%s/createdb_mysql' % context['localuser']
+    f = open(localtemplate, 'w')
+    f.write(tp.render(context))
+    f.close()
+    _put(localtemplate, '{{home_dir}}/createdb_mysql')
+    with settings(warn_only=True):
+        _run('mysql -u {{db_root}} -h {{db_endpoint}} -p mysql < {{home_dir}}/createdb_mysql')
+        _run('rm {{home_dir}}/createdb_mysql')
+    os.remove(localtemplate)
+
+def p_dropdb_mysql():
+    """
+    Create user (name of project) and database (also name of project) with proper priviledges;
+    """
+    tp = jenv.get_template("dropdb_mysql")
+    localtemplate = '/home/%s/dropdb_mysql' % context['localuser']
+    f = open(localtemplate, 'w')
+    f.write(tp.render(context))
+    f.close()
+    _put(localtemplate, '{{home_dir}}/dropdb_mysql')
+    with settings(warn_only=True):
+        _run('mysql -u {{db_root}} -h {{db_endpoint}} -p mysql < {{home_dir}}/dropdb_mysql')
+        _run('rm {{home_dir}}/dropdb_mysql')
+    os.remove(localtemplate)
 
 # Deploying commands
 def deploy():

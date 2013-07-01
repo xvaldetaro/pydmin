@@ -1,0 +1,3 @@
+create database {{proj}};
+grant all on {{proj}}.* to '{{proj}}'@'%';
+set password for '{{proj}}'@'%' = {% if db_password_hash %}'{{db_password_hash}}'{% else %}PASSWORD('{{db_password}}'){% endif %};
