@@ -133,6 +133,7 @@ def p_repo():
     """
     Clones git repository, creates venv and put launch templates
     """
+    _run("rm -rf {{ proj_app_dir }}")
     with cd(context['apps_dir']):
         with settings(warn_only=True):
             _run("git clone {{ git_url }}")
@@ -176,10 +177,10 @@ def p_dropdb_mysql():
     f = open(localtemplate, 'w')
     f.write(tp.render(context))
     f.close()
-    _put(localtemplate, '{{home_dir}}/dropdb_mysql')
+    _put(localtemplate, '{{proj_conf_dir}}/dropdb_mysql')
     with settings(warn_only=True):
-        _run('mysql -u {{db_root}} -h {{db_endpoint}} -P {{db_port}} -p mysql < {{home_dir}}/dropdb_mysql')
-        _run('rm {{home_dir}}/dropdb_mysql')
+        _run('mysql -u {{db_root}} -h {{db_endpoint}} -P {{db_port}} -p mysql < {{proj_conf_dir}}/dropdb_mysql')
+        _run('rm {{proj_conf_dir}}/dropdb_mysql')
     os.remove(localtemplate)
 
 # Deploying commands
@@ -216,6 +217,13 @@ def d_syncdb():
     """
     with cd(context['proj_app_dir']):
         _fullenv_command('python manage.py syncdb')
+
+def d_collectstatic():
+    """
+    Executes django's syncdb
+    """
+    with cd(context['proj_app_dir']):
+        _fullenv_command('python manage.py collectstatic')
 
 def d_restart():
     """
