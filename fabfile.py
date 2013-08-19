@@ -33,19 +33,6 @@ def system():
     s_envs()
     s_git()
 
-def s_aws_ssh_auth():
-    """
-    Connect as ubuntu using localuserhome/.ssh/key.pem .
-    Transfer localuserhome/.ssh/id_rsa to temp remote folder
-    creates actual_userremotehome/.ssh folder and chowns it
-    cats copied id_rsa to actual_userremotehome/.ssh/authorized_keys and chowns it
-    """
-    _mkdir(r"{{ ssh_dir }}")
-    _put("{{ local_ssh_pub }}", "/home/{{user}}/temp.k" )
-    _sudo("cat /home/{{user}}/temp.k >> {{ ssh_dir }}/authorized_keys")
-    _sudo("chown {{ user }} {{ ssh_dir }}/authorized_keys")
-    _sudo("rm /home/{{user}}/temp.k")
-
 def s_folders():
     """
     Creates the main folders (apps, venvs, confs, logs, statics)
@@ -57,8 +44,8 @@ def s_aptpkgs():
     """
     Install apt-gets. Set up nginx.conf and create nginx logs dir.
     """
-    _apt("mysql-client", "libmysqlclient-dev", "nginx", "memcached", "git",
-      "python-setuptools", "python-dev", "build-essential", "python-pip", "python-mysqldb")
+    _apt("build-essential", "python-dev", "mysql-client", "python-mysqldb", "nginx", "memcached", "git",
+      "python-setuptools", "python-pip", "libmysqlclient-dev")
  
     with settings(warn_only=True):
         _mkdir(r"{{ logs_dir }}/nginx")
@@ -142,8 +129,8 @@ def p_venv():
     _run("virtualenv --distribute {{proj_venv_dir}}")
 
 def p_scripts():
-    _put_template_('gunicorn_conf.py', context, '{{proj_conf_dir}}/gunicorn_conf.py')
-    _put_template_('launch.sh', context, '{{proj_app_dir}}/launch.sh')
+    _put_template('gunicorn_conf.py', context, '{{proj_conf_dir}}/gunicorn_conf.py')
+    _put_template('launch.sh', context, '{{proj_app_dir}}/launch.sh')
 
     _run('chmod 700 {{proj_app_dir}}/launch.sh')
 
@@ -157,31 +144,19 @@ def p_createdb_mysql():
     """
     Create user (name of project) and database (also name of project) with proper priviledges;
     """
-    tp = jenv.get_template("createdb_mysql")
-    localtemplate = '/home/%s/createdb_mysql' % context['localuser']
-    f = open(localtemplate, 'w')
-    f.write(tp.render(context))
-    f.close()
-    _put(localtemplate, '{{proj_conf_dir}}/createdb_mysql')
+    _put_template_('createdb_mysql', context, '{{proj_conf_dir}}/createdb_mysql')
     with settings(warn_only=True):
         _run('mysql -u {{db_root}} -h {{db_endpoint}} -P {{db_port}} -p mysql < {{proj_conf_dir}}/createdb_mysql')
         _run('rm {{proj_conf_dir}}/createdb_mysql')
-    os.remove(localtemplate)
 
 def p_dropdb_mysql():
     """
     Create user (name of project) and database (also name of project) with proper priviledges;
     """
-    tp = jenv.get_template("dropdb_mysql")
-    localtemplate = '/home/%s/dropdb_mysql' % context['localuser']
-    f = open(localtemplate, 'w')
-    f.write(tp.render(context))
-    f.close()
-    _put(localtemplate, '{{proj_conf_dir}}/dropdb_mysql')
+    _put_template_('dropdb_mysql', context, '{{proj_conf_dir}}/dropdb_mysql')
     with settings(warn_only=True):
         _run('mysql -u {{db_root}} -h {{db_endpoint}} -P {{db_port}} -p mysql < {{proj_conf_dir}}/dropdb_mysql')
         _run('rm {{proj_conf_dir}}/dropdb_mysql')
-    os.remove(localtemplate)
 
 # Deploying commands
 def deploy():
@@ -272,12 +247,27 @@ def us(command):
     """
     _sudo(command)
 
+def u_droptemplates():
+    _mkdir_local("{{proj_app_dir}}/fabtemplates")
+    _put_template_local('nginx_site.conf', context, '{{proj_app_dir}}/fabtemplates/nginx_site.conf')
+    _put_template_local('createdb_mysql', context, '{{proj_app_dir}}/fabtemplates/createdb_mysql')
+    _put_template_local('dropdb_mysql', context, '{{proj_app_dir}}/fabtemplates/dropdb_mysql')
+    _put_template_local('gunicorn_conf.py', context, '{{proj_app_dir}}/fabtemplates/gunicorn_conf.py')
+    _put_template_local('launch.sh', context, '{{proj_app_dir}}/fabtemplates/launch.sh')
+    _put_template_local('nginx.conf', context, '{{proj_app_dir}}/fabtemplates/nginx.conf')
+    _put_template_local('upstart_nginx.conf', context, '{{proj_app_dir}}/fabtemplates/nginx.conf')
+
 ### Internal commands
 def _mkdir(*dirs):
     for dire in dirs:
         with settings(warn_only=True):
             _sudo("mkdir -p %s" % dire)
         _sudo("chown %s %s" % (context['user'], dire) )
+
+def _mkdir_local(*dirs):
+    for dire in dirs:
+        with settings(warn_only=True):
+            _local("mkdir -p %s" % dire)
 
 def _apt(*pkgs):
     """
@@ -304,11 +294,18 @@ def _run(cmd_text):
     command = _render(cmd_text)
     run(command)
 
-def _put_template_(template_name, context, destination):
+def _local(cmd_text):
+    """
+    Runs command with active user
+    """
+    command = _render(cmd_text)
+    local(command)
+
+def _put_template_local(template_name, context, destination):
     tp = jenv.get_template(template_name)
     with settings(warn_only=True):
-        _run("rm %s" % destination)
-        _run("echo '%s' >> %s" % (tp.render(context), destination))
+        _local("rm %s" % destination)
+        _local("echo '%s' >> %s" % (tp.render(context), destination))
 
 def _put_template(template_name, context, destination):
     tp = jenv.get_template(template_name)
