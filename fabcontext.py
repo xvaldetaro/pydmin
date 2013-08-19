@@ -1,30 +1,32 @@
 context = {}
 
-# machine changeable values
-context['localuser'] = "xande"
-context['user'] = "xande"
-context['sudouser'] = 'ubuntu'
-context['hosts'] = ["54.232.198.136"]
+# project changeable values
+context['proj'] = "mendigames"
+proj = context['proj']
 context['github_username'] = "xvaldetaro"
 context['github_email'] = "xvaldetaro@gmail.com"
-context['github_key'] = "github"
-context['local_ssh_dir'] = "/home/%s/.ssh" % context['localuser']
-
-# project changeable values
-context['proj'] = "caiubem"
-proj = context['proj']
-context['git_url'] = "git@github.com:xvaldetaro/%s.git" % proj
+context['git_url'] = "git@github.com:%s/%s.git" % (context['github_username'], proj)
 context['domains'] = ["www.%s.com.br" % proj,"%s.com.br" % proj, "www.%s.com" % proj,"%s.com" % proj]
 context['proxy_port'] = "8000"
-context['local_env_file'] = '/home/%s/confs/%s/prod.sh' % (context['localuser'], context['proj'])
+
+# Development machine configs
+context['dev_proj_dir'] = '/home/xande/apps/%s' % proj
+context['dev_ssh_dir'] = '/home/xande/.ssh'
+context['ssh_pem'] = "%s/key.pem" % context['dev_ssh_dir']
+context['ssh_github_priv_key'] = "%s/github" % context['dev_ssh_dir']
+context['dev_env_file'] = '/home/xande/confs/%s/prod.sh' % proj
+
+# Remote machine changeable values
+context['user'] = "xande"
+context['hosts'] = ["54.232.198.136"]
 
 # DB access
-context['db_endpoint'] = 'general.c0wd51cw67md.sa-east-1.rds.amazonaws.com'
+context['db_endpoint'] = 'localhost'
 context['db_port'] = '3306'
-context['db_root'] = 'xvaldetaro'
+context['db_root'] = 'root'
 # This is NOT the root password (which you will type when prompted). 
 # This is the desired project user db password.
-context['db_password'] = 'd474b453'
+context['db_password'] = '1234'
 
 #uncomment to provide ssl:
 #context['ssl_port'] = "8443"
@@ -44,10 +46,7 @@ context['proj_venv_dir'] = "%s/%s" % (context['venvs_dir'],context['proj'])
 context['proj_conf_dir'] = "%s/%s" % (context['confs_dir'],context['proj'])
 context['proj_log_dir'] = "%s/%s" % (context['logs_dir'],context['proj'])
 context['ssh_dir'] = "/home/%s/.ssh" % context['user']
-context['local_ssh_pem'] = "%s/key.pem" % context['local_ssh_dir']
-context['local_ssh_pub'] = "%s/id_rsa.pub" % context['local_ssh_dir']
-context['local_ssh_priv'] = "%s/id_rsa" % context['local_ssh_dir']
 # uncomment to provide local statics
-# context['proj_static_dir'] = "%s/%s" % (context['statics_dir'],context['proj'])
+context['proj_static_dir'] = "%s/%s" % (context['statics_dir'],context['proj'])
 
 context['launch_cmd'] = "%s/launch.sh" % context['proj_app_dir']
