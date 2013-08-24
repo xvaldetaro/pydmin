@@ -177,7 +177,7 @@ def d_putenv():
     """
     Put the environment file
     """
-    put('{{local_env_file}}', '{{proj_conf_dir}}/env.sh')
+    _put_template_('production.sh', '{{proj_conf_dir}}/env.sh')
     run('chmod 600 {{proj_conf_dir}}/env.sh')
 
 def d_syncdb():

@@ -1,3 +1,7 @@
+
+import hashlib,random
+
+
 context = {}
 
 # project changeable values
@@ -14,13 +18,14 @@ context['dev_proj_dir'] = '/home/xande/apps/%s' % proj
 context['dev_ssh_dir'] = '/home/xande/.ssh'
 context['ssh_pem'] = "%s/key.pem" % context['dev_ssh_dir']
 context['ssh_github_priv_key'] = "%s/github" % context['dev_ssh_dir']
-context['dev_env_file'] = '/home/xande/confs/%s/prod.sh' % proj
+context['dev_env_file'] = '/home/xande/confs/%s/production.sh' % proj
 
 # Remote machine changeable values
 context['user'] = "xande"
-context['hosts'] = ["54.232.198.136"]
+context['hosts'] = ["localhost"]
 
 # DB access
+context['db'] = 'mysql'
 context['db_endpoint'] = 'localhost'
 context['db_port'] = '3306'
 context['db_root'] = 'root'
@@ -50,3 +55,4 @@ context['ssh_dir'] = "/home/%s/.ssh" % context['user']
 context['proj_static_dir'] = "%s/%s" % (context['statics_dir'],context['proj'])
 
 context['launch_cmd'] = "%s/launch.sh" % context['proj_app_dir']
+context['secret_key'] = hashlib.md5(str(random.randint(1,9999999))).hexdigest()
