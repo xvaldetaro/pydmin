@@ -1,4 +1,5 @@
 from fabric.api import *
+import os
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -37,24 +38,22 @@ def s_aptpkgs():
     """
     Install apt-gets. Set up nginx.conf and create nginx logs dir.
     """
+    _sudo("apt-get update")
     _apt("build-essential", "python-dev", "mysql-client", "python-mysqldb", "nginx", "memcached", "git",
       "python-setuptools", "python-pip", "libmysqlclient-dev")
  
     with settings(warn_only=True):
         _mkdir(r"{{ logs_dir }}/nginx")
 
-    _put_template('nginx.conf', '/etc/nginx/nginx.conf')
+    _put_template_sudo('nginx.conf', '/etc/nginx/nginx.conf')
 
-    _put_template('upstart_nginx.conf', '/etc/init/nginx.conf')
+    _put_template_sudo('upstart_nginx.conf', '/etc/init/nginx.conf')
 
 def s_pypkgs():
     """
     Install the conf system pip packages. configure venvwrapper
     """
-    _pip("virtualenv", "virtualenvwrapper")
-    run("echo 'export WORKON_HOME={{ venvs_dir }}' >> /home/{{ user }}/.profile")
-    run("echo 'source /usr/local/bin/virtualenvwrapper.sh' >> /home/{{ user }}/.profile")
-    run("source /home/{{ user }}/.profile")
+    _sudo("pip install virtualenv")
     
 def s_envs():
     """
@@ -72,8 +71,8 @@ def s_git():
     """
     put("{{ dev_ssh_dir }}/{{ ssh_github_priv_key }}", "{{ ssh_dir }}/id_rsa")
     run("chmod 600 {{ ssh_dir }}/id_rsa")
-    run("git config --global user.name '{{ git_username }}'")
-    run("git config --global user.email '{{ git_email }}'")
+    run("git config --global user.name '{{ github_username }}'")
+    run("git config --global user.email '{{ github_email }}'")
     run("ssh-keyscan github.com >> {{ ssh_dir }}/known_hosts")
 
 # Project level commands
@@ -103,7 +102,7 @@ def p_nginx():
     """
     Sets project's proxy nginx conf file and reloads nginx
     """
-    _put_template('nginx_site.conf', '/etc/nginx/sites-available/{{ proj }}')
+    _put_template_sudo('nginx_site.conf', '/etc/nginx/sites-available/{{ proj }}')
     _sudo("ln -f -s /etc/nginx/sites-available/{{ proj }} /etc/nginx/sites-enabled/{{ proj }}")
     with settings(warn_only=True):
         _sudo("initctl start nginx")
@@ -131,13 +130,13 @@ def p_gunicorn():
     """
     put gunicorn upstart conf
     """
-    _put_template('upstart_process.conf', '/etc/init/{{ proj }}.conf')
+    _put_template_sudo('upstart_process.conf', '/etc/init/{{ proj }}.conf')
 
 def p_createdb_mysql():
     """
     Create user (name of project) and database (also name of project) with proper priviledges;
     """
-    _put_template_('createdb_mysql', '{{proj_conf_dir}}/createdb_mysql')
+    _put_template('createdb_mysql', '{{proj_conf_dir}}/createdb_mysql')
     with settings(warn_only=True):
         run('mysql -u {{db_root}} -h {{db_endpoint}} -P {{db_port}} -p mysql < {{proj_conf_dir}}/createdb_mysql')
         run('rm {{proj_conf_dir}}/createdb_mysql')
@@ -146,7 +145,7 @@ def p_dropdb_mysql():
     """
     Create user (name of project) and database (also name of project) with proper priviledges;
     """
-    _put_template_('dropdb_mysql', '{{proj_conf_dir}}/dropdb_mysql')
+    _put_template('dropdb_mysql', '{{proj_conf_dir}}/dropdb_mysql')
     with settings(warn_only=True):
         run('mysql -u {{db_root}} -h {{db_endpoint}} -P {{db_port}} -p mysql < {{proj_conf_dir}}/dropdb_mysql')
         run('rm {{proj_conf_dir}}/dropdb_mysql')
@@ -177,7 +176,7 @@ def d_putenv():
     """
     Put the environment file
     """
-    _put_template_('production.sh', '{{proj_conf_dir}}/env.sh')
+    _put_template('production.sh', '{{proj_conf_dir}}/env.sh')
     run('chmod 600 {{proj_conf_dir}}/env.sh')
 
 def d_syncdb():
@@ -232,7 +231,7 @@ def l_na():
 def _mkdir(*dirs):
     for dire in dirs:
         with settings(warn_only=True):
-            _sudo("mkdir -p %s" % dire)
+            run("mkdir -p %s" % dire)
 
 def _apt(*pkgs):
     """
@@ -250,13 +249,19 @@ def _pip(*pkgs):
     Runs pip install commands
     """
     for pkg in pkgs:
-        _sudo("pip install %s" % pkg)
+        run("pip install %s" % pkg)
 
-def _put_template(template_name, destination):
+def _put_template_sudo(template_name, destination):
     f = open(THIS_DIR+'/'+template_name, 'r')
     with settings(warn_only=True):
         _sudo("rm %s" % destination)
         _sudo("echo '%s' >> %s" % (f.read(), destination))
+
+def _put_template(template_name, destination):
+    f = open(THIS_DIR+'/'+template_name, 'r')
+    with settings(warn_only=True):
+        run("rm %s" % destination)
+        run("echo '%s' >> %s" % (f.read(), destination))
 
 def _sudo(cmd_text):
     """
@@ -274,5 +279,5 @@ def _virtualenv_command(command):
     """
     Activates virtualenv and runs command
     """
-    run("source {{proj_venv_dir}}/bin/activate && %s" % command)
+    run("source {{ proj_conf_dir }}/env.sh && source {{proj_venv_dir}}/bin/activate && %s" % command)
     
